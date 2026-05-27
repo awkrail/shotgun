@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
-project(shotgun CXX)
+project(shotgun VERSION 0.1)
 
 include(FetchContent)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # use onnxruntime 1.20.1
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
@@ -19,14 +20,28 @@ endif()
 FetchContent_Declare(onnxruntime URL ${ORT_URL})
 FetchContent_MakeAvailable(onnxruntime)
 
+include(FetchContent)
+FetchContent_Declare(
+    argparse
+    GIT_REPOSITORY https://github.com/p-ranav/argparse.git
+)
+FetchContent_MakeAvailable(argparse)
+
+find_package(OpenCV REQUIRED)
+find_package(fmt REQUIRED)
+
 add_executable(shotgun
     src/main.cpp
+    src/config.cpp
+    src/video_stream.cpp
+    src/frame_timecode.cpp
     src/transnetv2.cpp
 )
 
 target_include_directories(shotgun PRIVATE
     include/
     ${onnxruntime_SOURCE_DIR}/include
+    ${OpenCV_INCLUDE_DIRS}
 )
 
 target_link_directories(shotgun PRIVATE
@@ -35,8 +50,19 @@ target_link_directories(shotgun PRIVATE
 
 target_link_libraries(shotgun PRIVATE
     onnxruntime
+    ${OpenCV_LIBS}
+    argparse
+    fmt::fmt
 )
 
+target_compile_options(shotgun PRIVATE 
+  -O3 
+  -Wall
+)
+
+#target_include_directories(shotgun PRIVATE 
+#  include ${OpenCV_INCLUDE_DIRS} ${Python3_INCLUDE_DIRS})
+#target_link_libraries(shutoh PUBLIC ${OpenCV_LIBS} fmt::fmt argparse pybind11::module ${Python3_LIBRARIES})
 
 #cmake_minimum_required(VERSION 3.14)
 

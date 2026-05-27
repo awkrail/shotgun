@@ -9,17 +9,24 @@
 #include "config.hpp"
 **/
 
+#include "config.h"
+#include "video_stream.h"
+
 #include <iostream>
 #include <vector>
 #include <cmath>
 #include "transnetv2.h"
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        std::cerr << "usage: shotgun <model.onnx>\n";
-        return 1;
-    }
 
+    std::optional<Config> opt_cfg = parse_args(argc, argv);
+    if (!opt_cfg.has_value())
+        return 1;
+    Config cfg = opt_cfg.value();
+
+    std::optional<VideoStream> opt_video = VideoStream::initialize_video_stream(cfg.input_path);
+
+    /**
     TransNetV2 model(argv[1]);
 
     const int T = 100;
@@ -30,9 +37,9 @@ int main(int argc, char *argv[]) {
     std::cout << "output shape: [" << logits.size() << "]\n";
     for (int i = 0; i < 5; i++) {
         float prob = 1.0f / (1.0f + std::exp(-logits[i]));
-        std::cout << "frame " << i << ": logit=" << logits[i]
-                  << " prob=" << prob << "\n";
+        std::cout << "frame " << i << ": logit=" << logits[i] << " prob=" << prob << "\n";
     }
+    **/
 
     return 0;
     /**

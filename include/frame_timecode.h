@@ -1,22 +1,22 @@
 #ifndef FRAME_TIMECODE_H
 #define FRAME_TIMECODE_H
 
-#include "error.hpp"
-
 #include <string>
 #include <cstdint>
+#include <optional>
+#include <iostream>
 
 constexpr int32_t HOUR_MAX = 10;
 
 class Hour {
     public:
         explicit Hour(const int32_t hour) : hour_{hour} {}
-        static WithError<Hour> create_hour(const int32_t hour) {
+        static std::optional<Hour> create_hour(const int32_t hour) {
             if (hour < 0 || hour >= HOUR_MAX) {
-                const std::string error_msg = "Hour should be 0 < x < 10, but got " + std::to_string(hour);
-                return WithError<Hour> { std::nullopt, Error(ErrorCode::TimeOutOfRange, error_msg) };
+                std::cerr << "[Error] Hour should be 0 < x < 10, but got " << std::to_string(hour) << std::endl;
+                return std::nullopt;
             }
-            return WithError<Hour> { Hour(hour), Error(ErrorCode::Success, "") };
+            return Hour(hour);
         }
         const int32_t get_hour() const { return hour_; }
     
@@ -27,12 +27,12 @@ class Hour {
 class Minute {
     public:
         explicit Minute(const int32_t minute) : minute_{minute} {}
-        static WithError<Minute> create_minute(const int32_t minute) {
+        static std::optional<Minute> create_minute(const int32_t minute) {
             if (minute < 0 || minute >= 60) {
-                const std::string error_msg = "Minute should be 0 < x < 60, but got " + std::to_string(minute);
-                return WithError<Minute> { std::nullopt, Error(ErrorCode::TimeOutOfRange, error_msg) };
+                std::cerr << "[Error] Minute should be 0 < x < 60, but got " << std::to_string(minute) << std::endl;
+                return std::nullopt;
             }
-            return WithError<Minute> { Minute(minute), Error(ErrorCode::Success, "") };
+            return Minute(minute);
         }
         const int32_t get_minute() const { return minute_; }
 
@@ -43,12 +43,12 @@ class Minute {
 class Second {
     public:
         explicit Second(const float second) : second_{second} {}
-        static WithError<Second> create_second(const float second) {
+        static std::optional<Second> create_second(const float second) {
             if (second < 0 || second >= 60) {
-                const std::string error_msg = "Second should be 0 < x < 60, but got " + std::to_string(second);
-                return WithError<Second> { std::nullopt, Error(ErrorCode::TimeOutOfRange, error_msg) };
+                std::cerr << "[Error] Second should be 0 < x < 60, but got " << std::to_string(second) << std::endl;
+                return std::nullopt;
             }
-            return WithError<Second> { Second(second), Error(ErrorCode::Success, "") };
+            return Second(second);
         }
         const float get_second() const { return second_; }
 
@@ -70,7 +70,7 @@ class FrameTimeCode {
         float get_framerate() const { return framerate_; }
         int32_t get_frame_num() const { return frame_num_; }
 
-        WithError<int32_t> parse_timecode_string(const std::string& timecode_str) const;
+        std::optional<int32_t> parse_timecode_string(const std::string& timecode_str) const;
         int32_t parse_timecode_number(const int32_t seconds) const;
         int32_t parse_timecode_number(const float seconds) const;
         std::string to_string() const;
@@ -86,13 +86,13 @@ class FrameTimeCode {
         FrameTimeCode operator+(const FrameTimeCode& other) const;
         FrameTimeCode operator-(const FrameTimeCode& other) const;
 
-        static WithError<FrameTimeCode> from_timecode_string(const std::string& timecode_str, const float fps);
-        static WithError<FrameTimeCode> from_frame_nums(const int32_t frame_num, const float fps);
-        static WithError<FrameTimeCode> from_seconds(const int32_t seconds, const float fps);
-        static WithError<FrameTimeCode> from_seconds(const float seconds, const float fps);
+        static std::optional<FrameTimeCode> from_timecode_string(const std::string& timecode_str, const float fps);
+        static std::optional<FrameTimeCode> from_frame_nums(const int32_t frame_num, const float fps);
+        static std::optional<FrameTimeCode> from_seconds(const int32_t seconds, const float fps);
+        static std::optional<FrameTimeCode> from_seconds(const float seconds, const float fps);
 
     private:
-        WithError<TimeStamp> _parse_hrs_mins_secs_to_second(const std::string& timecode_str) const;
+        std::optional<TimeStamp> _parse_hrs_mins_secs_to_second(const std::string& timecode_str) const;
         float framerate_;
         int32_t frame_num_;
 };

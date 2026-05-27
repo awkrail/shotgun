@@ -1,12 +1,17 @@
+/**
 #include "shutoh/error.hpp"
 #include "shutoh/video_stream.hpp"
 #include "shutoh/frame_timecode.hpp"
 
 #include "config.hpp"
 #include "parameters.hpp"
+**/
 
-#include <regex>
+#include "config.h"
+#include <iostream>
+#include <optional>
 
+/**
 std::shared_ptr<BaseDetector> _select_detector(const DetectorParameters& params) {
     switch (params.detector_type) {
         case DetectorType::CONTENT:
@@ -78,27 +83,27 @@ float _get_default_threshold(const DetectorType& detector_type) {
         case DetectorType::ADAPTIVE:
             return 3.0f;
         default:
-            return 27.0f; /* content detector */
+            return 27.0f;
     }
 }
+**/
 
-WithError<Config> _construct_config(argparse::ArgumentParser& program) {
-    /* mandatory commands */
-    const std::filesystem::path input_path(program.get<std::string>("--input"));
+std::optional<Config> _construct_config(argparse::ArgumentParser& program) {
+    const std::filesystem::path input_path(program.get<std::string>("--input_path"));
+    const std::filesystem::path model_path(program.get<std::string>("--model_path"));
+
+    /**
     const std::filesystem::path output_dir(program.get<std::string>("--output"));
     const std::string command = program.get<std::string>("--command");
     const std::string filename = _interpret_filename(input_path, program);
 
-    /* list-scenes */
     const bool no_output_file = program.get<bool>("--no_output_file");
     
-    /* split-video */
     const bool copy = program.get<bool>("--copy");
     const int32_t crf = program.get<int32_t>("--crf");
     const std::string preset = program.get<std::string>("--preset");
     const std::string ffmpeg_args = program.get<std::string>("--ffmpeg_args");
 
-    /* save-images */
     const int32_t num_images = program.get<int32_t>("--num_images");
     const std::string format = program.get<std::string>("--format");
     const int32_t quality = program.get<int32_t>("--quality");
@@ -108,31 +113,24 @@ WithError<Config> _construct_config(argparse::ArgumentParser& program) {
     const std::optional<int32_t> height = program.present<int32_t>("--height");
     const std::optional<int32_t> width = program.present<int32_t>("--width");
 
-    /* timecode */
     const std::optional<std::string> start = program.present<std::string>("--start");
     const std::optional<std::string> end = program.present<std::string>("--end");
     const std::optional<std::string> duration = program.present<std::string>("--duration");
 
-    /* detector common */
     const std::string detector_name = program.get<std::string>("--detector");
     const std::optional<float> opt_threshold = program.present<float>("--threshold");
     const int32_t min_scene_len = program.get<int32_t>("--min_scene_len");
     
-    /* adaptive detector */
     const int32_t window_width = program.get<int32_t>("--window_width");
     const float min_content_val = program.get<float>("--min_content_val");
     
-    /* hash detector */
     const int32_t dct_size = program.get<int32_t>("--dct_size");
     const int32_t lowpass = program.get<int32_t>("--lowpass");
     
-    /* histogram detector */
     const int32_t bins = program.get<int32_t>("--bins");
 
-    /* threshold detector */
     const float fade_bias = program.get<float>("--fade_bias");
 
-    /* validate arguments */
     if (!(command == "list-scenes" || command == "split-video" || command == "save-images")) {
         std::string error_msg = "--command should be list-scenes, split-video, or save-images.";
         return WithError<Config> { std::nullopt, Error(ErrorCode::InvalidArgument, error_msg) };
@@ -187,7 +185,6 @@ WithError<Config> _construct_config(argparse::ArgumentParser& program) {
 
     const float threshold = opt_threshold.has_value() ? opt_threshold.value() : _get_default_threshold(detector_type);
 
-    /* If width, height, and scale is set (save-images), resized_size is calculated. */
     if (!std::filesystem::exists(input_path)) {
         const std::string error_msg = "No such file: " + input_path.string();
         return WithError<Config> { std::nullopt, Error(ErrorCode::NoSuchFile, error_msg) };
@@ -209,16 +206,23 @@ WithError<Config> _construct_config(argparse::ArgumentParser& program) {
                             .bins = bins,                     .fade_bias = fade_bias };
 
     return WithError<Config> { config, Error(ErrorCode::Success, "") };
+    **/
+    const Config config = { .input_path = input_path };
+    return config;
 }
 
-WithError<Config> parse_args(int argc, char *argv[]) {
-    argparse::ArgumentParser program("shutoh", "0.0.1");
+std::optional<Config> parse_args(int argc, char *argv[]) {
+    argparse::ArgumentParser program("shotgun", "0.0.1");
 
-    /* Mandatory */ 
-    program.add_argument("-i", "--input")
+    program.add_argument("-i", "--input_path")
         .help("Input video file.")
         .required();
     
+    program.add_argument("-m", "--model_path")
+        .help("Input video file.")
+        .required();
+
+    /**
     program.add_argument("-c", "--command")
         .help("Command name. choose one from [list-scenes, split-videos, save-images]")
         .required();
@@ -235,13 +239,11 @@ WithError<Config> parse_args(int argc, char *argv[]) {
               "$VIDEO_NAME-scene-$SCENE_NUMBER (split-video), "
               "$VIDEO_NAME-scene-$SCENE_NUMBER-$IMAGE_NUMBER (save-images).");
 
-    /* list-scenes */
     program.add_argument("--no_output_file")
         .default_value(false)
         .implicit_value(true)
         .help("[list-scenes] Print scene list only.");
 
-    /* split-video */
     program.add_argument("--copy")
         .default_value(false)
         .implicit_value(true)
@@ -262,7 +264,6 @@ WithError<Config> parse_args(int argc, char *argv[]) {
         .help("[split-video] Codec arguments passed to FFmpeg when splitting scenes."
               "Use double quotes around arguments. Must specify at least audio/video codec.");
 
-    /* save-images */
     program.add_argument("--num_images")
         .default_value(3)
         .scan<'d', int>()
@@ -303,7 +304,6 @@ WithError<Config> parse_args(int argc, char *argv[]) {
         .scan<'d', int>()
         .help("[save-images] Height of images.");
 
-    /* timecode */
     program.add_argument("--start")
         .help("Time in video to start detection. Default value reperesents the first frame of the video.");
 
@@ -313,7 +313,6 @@ WithError<Config> parse_args(int argc, char *argv[]) {
     program.add_argument("--duration")
         .help("Maximum time in video to process. Default value represents the whole video length. Ignored if --end is set.");
     
-    /* detectors' common parameters */
     program.add_argument("--detector")
         .default_value(std::string("content"))
         .help("Detector type. Choose from [adaptive, content, hash, histogram, threshold].");
@@ -327,7 +326,6 @@ WithError<Config> parse_args(int argc, char *argv[]) {
         .scan<'d', int>()
         .help("Minimum scene length (=#frames) in cuts. Higher values ignore abrupt cuts.");
     
-    /* adaptive detector */
     program.add_argument("--window_width")
         .default_value(2)
         .scan<'d', int>()
@@ -338,7 +336,6 @@ WithError<Config> parse_args(int argc, char *argv[]) {
         .scan<'g', float>()
         .help("[AdaptiveDetector]: Minimum threshold (float) that content_val must be over to register as a new scene.");
 
-    /* hash detector */
     program.add_argument("--dct_size")
         .default_value(16)
         .scan<'d', int>()
@@ -349,24 +346,24 @@ WithError<Config> parse_args(int argc, char *argv[]) {
         .scan<'d', int>()
         .help("[HashDetector]: How much high frequency to filter from the DCT. A value of 2 means keeping lower 1/2 frequency data.");
     
-    /* histogram detector */
     program.add_argument("--bins")
         .default_value(256)
         .scan<'d', int>()
         .help("[HistogramDetector]: Number of bins to use for the histogram.");
     
-    /* threshold detector */
     program.add_argument("--fade_bias")
         .default_value(0.0f)
         .scan<'g', float>()
         .help("[ThresholdDetector]: Float between -1.0 and +1.0 that represents the percentage of timecode skew for the start of a scene");
+    **/
 
     try {
         program.parse_args(argc, argv);
     }
     catch (const std::exception& err) {
         std::string error_msg = err.what();
-        return WithError<Config> { std::nullopt, Error(ErrorCode::FailedToParseArgs, error_msg) };
+        std::cerr << "[Error] " << error_msg << std::endl;
+        return std::nullopt;
     }
 
     return _construct_config(program);

@@ -1,5 +1,4 @@
-#include "shutoh/video_stream.hpp"
-#include "shutoh/error.hpp"
+#include "video_stream.h"
 
 #include <string>
 #include <filesystem>
@@ -17,8 +16,8 @@ FrameTimeCode VideoStream::position() const {
     if (frame_num < 1)
         return start_;
 
-    WithError<FrameTimeCode> cur_timecode = FrameTimeCode::from_frame_nums(frame_num - 1, framerate_);
-    return cur_timecode.value();
+    std::optional<FrameTimeCode> cur_timecode = FrameTimeCode::from_frame_nums(frame_num - 1, framerate_);
+    return *cur_timecode;
 }
 
 bool VideoStream::is_end_frame() const {
@@ -33,83 +32,67 @@ int32_t VideoStream::height() const {
     return static_cast<int32_t>(cap_.get(cv::CAP_PROP_FRAME_HEIGHT));
 }
 
-WithError<void> VideoStream::set_time(const std::optional<std::string>& start, const std::optional<std::string>& end, 
-                                      const std::optional<std::string>& duration) {
+bool VideoStream::set_time(const std::optional<std::string>& start, const std::optional<std::string>& end,
+                           const std::optional<std::string>& duration) {
     if (start.has_value()) {
-        const WithError<FrameTimeCode> start_err = FrameTimeCode::from_timecode_string(start.value(), framerate_);
-        if (start_err.has_error())
-            return WithError<void> { start_err.error };
-        start_ = start_err.value();
+        std::optional<FrameTimeCode> start_tc = FrameTimeCode::from_timecode_string(*start, framerate_);
+        if (!start_tc)
+            return false;
+        start_ = *start_tc;
     }
 
-    const int32_t frame_num = static_cast<int32_t>(cap_.get(cv::CAP_PROP_POS_FRAMES));
-    const FrameTimeCode video_end = FrameTimeCode::from_frame_nums(frame_num, framerate_).value();
+    const int32_t frame_num = static_cast<int32_t>(cap_.get(cv::CAP_PROP_FRAME_COUNT));
+    std::optional<FrameTimeCode> video_end = FrameTimeCode::from_frame_nums(frame_num, framerate_);
+    if (!video_end)
+        return false;
 
     if (end.has_value()) {
-        const WithError<FrameTimeCode> end_err = FrameTimeCode::from_timecode_string(end.value(), framerate_);
-        if (end_err.has_error())
-            return WithError<void> { end_err.error };
-        end_ = end_err.value() <= video_end ? end_err.value() : video_end;
+        std::optional<FrameTimeCode> end_tc = FrameTimeCode::from_timecode_string(*end, framerate_);
+        if (!end_tc)
+            return false;
+        end_ = *end_tc <= *video_end ? *end_tc : *video_end;
 
     } else if (duration.has_value()) {
-        const WithError<FrameTimeCode> duration_err = FrameTimeCode::from_timecode_string(duration.value(), framerate_);
-        if (duration_err.has_error())
-            return WithError<void> { duration_err.error };
-        
-        end_ = start_ + duration_err.value() <= video_end ? start_ + duration_err.value() : video_end;
+        std::optional<FrameTimeCode> duration_tc = FrameTimeCode::from_timecode_string(*duration, framerate_);
+        if (!duration_tc)
+            return false;
+        end_ = start_ + *duration_tc <= *video_end ? start_ + *duration_tc : *video_end;
     }
 
-    if (start_ >= end_) {
-        std::string error_msg = "--start is smaller than video length.";
-        return WithError<void> { Error(ErrorCode::InvalidArgument, error_msg) };
-    }
+    if (start_ >= end_)
+        return false;
 
-    return WithError<void> { Error(ErrorCode::Success, "") };
+    return true;
 }
 
-WithError<void> VideoStream::seek(const int32_t frame_num) {
-    if (frame_num < 0) {
-        std::string error_msg = "";
-        return WithError<void> { Error(ErrorCode::NegativeFrameNum, error_msg) };
-    }
+bool VideoStream::seek(const int32_t frame_num) {
+    if (frame_num < 0)
+        return false;
 
-    if (frame_num >= cap_.get(cv::CAP_PROP_FRAME_COUNT)) {
-        std::string error_msg = "Target frame num is over the maximum frame count.";
-        return WithError<void> { Error(ErrorCode::OverMaximumFrameNum, error_msg) };
-    }
+    if (frame_num >= cap_.get(cv::CAP_PROP_FRAME_COUNT))
+        return false;
 
-    if (!cap_.set(cv::CAP_PROP_POS_FRAMES, frame_num)) {
-        std::string error_msg = "Failed to set the frame position.";
-        return WithError<void> { Error(ErrorCode::FailedToSetFramePosition, error_msg) };
-    }
+    if (!cap_.set(cv::CAP_PROP_POS_FRAMES, frame_num))
+        return false;
 
-    return WithError<void> { Error(ErrorCode::Success, "") };
+    return true;
 }
 
-WithError<VideoStream> VideoStream::initialize_video_stream(const std::filesystem::path& input_path) {
-    if (!std::filesystem::exists(input_path)) {
-        const std::string error_msg = "No such file: " + input_path.string();
-        return WithError<VideoStream> { std::nullopt, Error(ErrorCode::NoSuchFile, error_msg) };
-    }
+std::optional<VideoStream> VideoStream::initialize_video_stream(const std::filesystem::path& input_path) {
+    if (!std::filesystem::exists(input_path))
+        return std::nullopt;
 
     cv::VideoCapture cap(input_path.string());
-    if (!cap.isOpened()) {
-        const std::string error_msg = "Failed to open the video: " + input_path.string();
-        return WithError<VideoStream> { std::nullopt, Error(ErrorCode::FailedToOpenFile, error_msg) };
-    }
+    if (!cap.isOpened())
+        return std::nullopt;
 
     const int8_t codec = static_cast<int8_t>(cap.get(cv::CAP_PROP_FOURCC));
-    const bool codec_unsupported = (std::abs(codec) == 0);
-    if (codec_unsupported) {
-        const std::string error_msg = "Not supported codec.";
-        return WithError<VideoStream> { std::nullopt, Error(ErrorCode::NotSupportedCodec, error_msg) };
-    }
+    if (std::abs(codec) == 0)
+        return std::nullopt;
 
     float framerate = cap.get(cv::CAP_PROP_FPS);
-    if (framerate < frame_timecode::MIN_FPS_DELTA) {
-        const std::string error_msg = "Framerate should be larger than MIN_FPS_DELTA = " + std::to_string(frame_timecode::MIN_FPS_DELTA);
-        return WithError<VideoStream> { std::nullopt, Error(ErrorCode::TooSmallFpsValue, error_msg) };
-    }
+    if (framerate < frame_timecode::MIN_FPS_DELTA)
+        return std::nullopt;
 
-    return WithError<VideoStream> { VideoStream(input_path.string(), framerate, cap), Error(ErrorCode::Success, "") };
+    return VideoStream(input_path.string(), framerate, cap);
 }
