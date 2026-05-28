@@ -36,6 +36,7 @@ add_executable(shotgun
     src/video_stream.cpp
     src/frame_timecode.cpp
     src/transnetv2.cpp
+    src/scene_manager.cpp
 )
 
 target_include_directories(shotgun PRIVATE

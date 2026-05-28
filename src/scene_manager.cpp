@@ -1,8 +1,7 @@
-#include "shutoh/scene_manager.hpp"
-#include "shutoh/video_frame.hpp"
-#include "shutoh/video_stream.hpp"
-#include "shutoh/error.hpp"
-#include "blocking_queue.hpp"
+#include "scene_manager.h"
+#include "video_frame.h"
+#include "video_stream.h"
+#include "blocking_queue.h"
 
 #include <thread>
 #include <algorithm>
@@ -10,7 +9,7 @@
 constexpr int32_t DEFAULT_MIN_WIDTH = 256;
 constexpr int32_t MAX_FRAME_QUEUE_LENGTH = 100;
 
-SceneManager::SceneManager(std::shared_ptr<BaseDetector> detector) : detector_{detector} {}
+SceneManager::SceneManager(TransNetV2& detector) : detector_{detector} {}
 
 void SceneManager::detect_scenes(VideoStream& video) {
     start_ = video.get_start();
@@ -35,10 +34,10 @@ void SceneManager::detect_scenes(VideoStream& video) {
     thread.join();
 }
 
-WithError<std::vector<FrameTimeCodePair>> SceneManager::get_scene_list() const {
+std::optional<std::vector<FrameTimeCodePair>> SceneManager::get_scene_list() const {
     if (!start_.has_value() || !end_.has_value()) {
-        std::string error_msg = "Run detect_scenes() before get_scene_list().";
-        return WithError<std::vector<FrameTimeCodePair>> { std::nullopt, Error(ErrorCode::FunctionIsNotCalled, error_msg) };
+        std::cerr << "Run detect_scenes() before get_scene_list()." << std::endl;
+        return std::nullopt;
     }
 
     const FrameTimeCode start_pos = start_.value();
@@ -49,7 +48,7 @@ WithError<std::vector<FrameTimeCodePair>> SceneManager::get_scene_list() const {
     if (timecode_cut_list.size() == 0) {
         FrameTimeCodePair scene{ start_pos, last_pos }; 
         scenes.push_back(scene);
-        return WithError<std::vector<FrameTimeCodePair>> { scenes, Error(ErrorCode::Success, "") };
+        return scenes;
     }
 
     FrameTimeCode last_cut = start_pos;
@@ -61,7 +60,7 @@ WithError<std::vector<FrameTimeCodePair>> SceneManager::get_scene_list() const {
 
     FrameTimeCodePair scene{ last_cut, last_pos };
     scenes.push_back(scene);    
-    return WithError<std::vector<FrameTimeCodePair>> { scenes, Error(ErrorCode::Success, "") };
+    return scenes;
 }
 
 std::vector<FrameTimeCode> SceneManager::_get_cutting_list() const {
@@ -74,9 +73,11 @@ std::vector<FrameTimeCode> SceneManager::_get_cutting_list() const {
 }
 
 void SceneManager::_process_frame(VideoFrame& next_frame) {
-    std::optional<int32_t> cuts = detector_->process_frame(next_frame);
+    /**
+    std::optional<int32_t> cuts = detector_.predict(next_frame);
     if (cuts.has_value())
         cutting_list_.push_back(cuts.value());
+    **/
 }
 
 void SceneManager::_decode_thread(VideoStream& video,

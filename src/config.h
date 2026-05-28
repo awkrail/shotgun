@@ -20,6 +20,8 @@
 struct Config {
     /* common */
     const std::filesystem::path input_path;
+    const std::filesystem::path model_path;
+
     /**
     const std::filesystem::path output_dir;
     const std::string command;

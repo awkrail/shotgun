@@ -207,7 +207,7 @@ std::optional<Config> _construct_config(argparse::ArgumentParser& program) {
 
     return WithError<Config> { config, Error(ErrorCode::Success, "") };
     **/
-    const Config config = { .input_path = input_path };
+    const Config config = { .input_path = input_path, .model_path = model_path };
     return config;
 }
 

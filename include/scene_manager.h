@@ -1,10 +1,10 @@
 #ifndef SCENE_MANAGER_H
 #define SCENE_MANAGER_H
 
-#include "detector/base_detector.hpp"
-#include "video_frame.hpp"
-#include "frame_timecode.hpp"
-#include "frame_timecode_pair.hpp"
+#include "transnetv2.h"
+#include "video_frame.h"
+#include "frame_timecode.h"
+#include "frame_timecode_pair.h"
 
 #include <opencv2/opencv.hpp>
 #include <vector>
@@ -14,13 +14,12 @@
 
 class VideoStream;
 template <typename T> class BlockingQueue;
-template <typename T> struct WithError;
 
 class SceneManager {
     public:
-        explicit SceneManager(std::shared_ptr<BaseDetector> detector);
+        explicit SceneManager(TransNetV2& detector);
         void detect_scenes(VideoStream& video);
-        WithError<std::vector<FrameTimeCodePair>> get_scene_list() const;
+        std::optional<std::vector<FrameTimeCodePair>> get_scene_list() const;
 
     private:
         void _process_frame(VideoFrame& next_frame);
@@ -31,7 +30,7 @@ class SceneManager {
 
         cv::Mat previous_frame_;
         std::vector<int32_t> cutting_list_;
-        std::shared_ptr<BaseDetector> detector_;
+        TransNetV2& detector_;
         float framerate_ = 0.0f;
         std::optional<FrameTimeCode> start_ = std::nullopt;
         std::optional<FrameTimeCode> end_ = std::nullopt;
