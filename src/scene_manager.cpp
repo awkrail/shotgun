@@ -6,7 +6,8 @@
 #include <thread>
 #include <algorithm>
 
-constexpr int32_t DEFAULT_MIN_WIDTH = 256;
+constexpr int32_t TRANSNET_WIDTH = 48;
+constexpr int32_t TRANSNET_HEIGHT = 27;
 constexpr int32_t MAX_FRAME_QUEUE_LENGTH = 100;
 
 SceneManager::SceneManager(TransNetV2& detector) : detector_{detector} {}
@@ -20,9 +21,7 @@ void SceneManager::detect_scenes(VideoStream& video) {
     video.seek(start_frame_num);
 
     BlockingQueue<VideoFrame> frame_queue(MAX_FRAME_QUEUE_LENGTH);
-    const float downscale_factor = compute_downscale_factor(video.width());
-    std::thread thread(&SceneManager::_decode_thread, this, std::ref(video),
-                       downscale_factor, std::ref(frame_queue));
+    std::thread thread(&SceneManager::_decode_thread, this, std::ref(video), std::ref(frame_queue));
 
     while (true) {
         VideoFrame next_frame = frame_queue.get();
@@ -80,25 +79,16 @@ void SceneManager::_process_frame(VideoFrame& next_frame) {
     **/
 }
 
-void SceneManager::_decode_thread(VideoStream& video,
-                                  const float downscale_factor, 
-                                  BlockingQueue<VideoFrame>& frame_queue) {
-    int32_t new_width = video.width();
-    int32_t new_height = video.height();
-    if (downscale_factor > 1) {
-        new_width = std::max(1.0f, std::round(new_width / downscale_factor));
-        new_height = std::max(1.0f, std::round(new_height / downscale_factor));
-    }
-    cv::Size new_size(new_width, new_height);
-    
+void SceneManager::_decode_thread(VideoStream& video, BlockingQueue<VideoFrame>& frame_queue) {
+    const cv::Size transnet_size(TRANSNET_WIDTH, TRANSNET_HEIGHT);
+
     while (true) {
         cv::Mat frame;
-
         if(!video.get_cap().read(frame))
             break;
 
-        if (downscale_factor > 1)
-            cv::resize(frame, frame, new_size, 0, 0, cv::INTER_LINEAR);
+        cv::Mat resized;
+        cv::resize(frame, resized, transnet_size, 0, 0, cv::INTER_LINEAR);
 
         VideoFrame video_frame {frame, video.position().get_frame_num(), video.is_end_frame()};
         frame_queue.push(video_frame);
@@ -106,11 +96,4 @@ void SceneManager::_decode_thread(VideoStream& video,
         if (video.is_end_frame())
             break;
     }
-}
-
-float compute_downscale_factor(const int32_t frame_width) {
-    if (frame_width < DEFAULT_MIN_WIDTH)
-        return 1.0f;
-
-    return static_cast<float>(frame_width) / DEFAULT_MIN_WIDTH;
 }

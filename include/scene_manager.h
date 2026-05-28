@@ -23,9 +23,7 @@ class SceneManager {
 
     private:
         void _process_frame(VideoFrame& next_frame);
-        void _decode_thread(VideoStream& video,
-                            const float downscale_factor,
-                            BlockingQueue<VideoFrame>& frame_queue);
+        void _decode_thread(VideoStream& video, BlockingQueue<VideoFrame>& frame_queue);
         std::vector<FrameTimeCode> _get_cutting_list() const;
 
         cv::Mat previous_frame_;
@@ -35,7 +33,5 @@ class SceneManager {
         std::optional<FrameTimeCode> start_ = std::nullopt;
         std::optional<FrameTimeCode> end_ = std::nullopt;
 };
-
-float compute_downscale_factor(const int32_t frame_width);
 
 #endif
