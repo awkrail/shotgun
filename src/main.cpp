@@ -34,5 +34,14 @@ int main(int argc, char *argv[]) {
     SceneManager scene_manager = SceneManager(transnetv2_detector);
     scene_manager.detect_scenes(video);
 
+    std::optional<std::vector<FrameTimeCodePair>> opt_scenes = scene_manager.get_scene_list();
+    if (!opt_scenes.has_value())
+        return 1;
+
+    std::vector<FrameTimeCodePair> scenes = opt_scenes.value();
+    for (auto & scene : scenes) {
+        std::cout << scene.first.to_string() << " - " << scene.second.to_string() << std::endl;
+    }
+
     return 0;
 }

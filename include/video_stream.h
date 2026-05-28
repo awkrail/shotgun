@@ -2,35 +2,33 @@
 #define VIDEO_STREAM_H
 
 #include "frame_timecode.h"
-
 #include <opencv2/opencv.hpp>
 #include <string>
 #include <filesystem>
 #include <optional>
 
 class VideoStream {
-    public:
-        explicit VideoStream(const std::string& input_path, const float framerate, cv::VideoCapture& cap);
-        FrameTimeCode position() const;
-        bool is_end_frame() const;
+public:
+    explicit VideoStream(const std::string& input_path, const float framerate, cv::VideoCapture& cap);
+    FrameTimeCode position() const;
+    bool is_end_frame() const;
+    int32_t width() const;
+    int32_t height() const;
+    bool set_time(const std::optional<std::string>& start, const std::optional<std::string>& end,
+                  const std::optional<std::string>& duration);
+    cv::VideoCapture& get_cap() { return cap; }
+    float get_framerate() const { return framerate; }
+    const FrameTimeCode& get_start() const { return start; }
+    const FrameTimeCode& get_end() const { return end; }
+    bool seek(const int32_t frame_num);
+    static std::optional<VideoStream> initialize_video_stream(const std::filesystem::path& input_path);
 
-        int32_t width() const;
-        int32_t height() const;
-        bool set_time(const std::optional<std::string>& start, const std::optional<std::string>& end, 
-                      const std::optional<std::string>& duration);
-        cv::VideoCapture& get_cap() { return cap_; }
-        float get_framerate() const { return framerate_; }
-        const FrameTimeCode& get_start() const { return start_; }
-        const FrameTimeCode& get_end() const { return end_; }
-        bool seek(const int32_t frame_num);
-        static std::optional<VideoStream> initialize_video_stream(const std::filesystem::path& input_path);
-
-    private:
-        const std::string input_path_;
-        const float framerate_;
-        cv::VideoCapture cap_;
-        FrameTimeCode start_;
-        FrameTimeCode end_;
+private:
+    const std::string input_path;
+    const float framerate;
+    cv::VideoCapture cap;
+    FrameTimeCode start;
+    FrameTimeCode end;
 };
 
 #endif

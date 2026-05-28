@@ -4,6 +4,6 @@
 #include <tuple>
 
 class FrameTimeCode;
-using FrameTimeCodePair = std::tuple<FrameTimeCode, FrameTimeCode>;
+using FrameTimeCodePair = std::pair<FrameTimeCode, FrameTimeCode>;
 
 #endif

@@ -10,7 +10,7 @@ public:
     std::vector<float> predict(const std::vector<uint8_t>& frames, int T);
 
 private:
-    Ort::Env env_;
-    Ort::Session session_;
-    Ort::MemoryInfo memory_info_;
+    Ort::Env env;
+    Ort::Session session;
+    Ort::MemoryInfo memory_info;
 };

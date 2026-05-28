@@ -5,33 +5,35 @@
 #include "video_frame.h"
 #include "frame_timecode.h"
 #include "frame_timecode_pair.h"
-
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <cstdint>
 #include <optional>
-#include <memory>
 
 class VideoStream;
 template <typename T> class BlockingQueue;
+constexpr int32_t TRANSNET_WINDOW = 100;
 
 class SceneManager {
-    public:
-        explicit SceneManager(TransNetV2& detector);
-        void detect_scenes(VideoStream& video);
-        std::optional<std::vector<FrameTimeCodePair>> get_scene_list() const;
+public:
+    explicit SceneManager(TransNetV2& detector);
+    void detect_scenes(VideoStream& video);
+    std::optional<std::vector<FrameTimeCodePair>> get_scene_list() const;
 
-    private:
-        void _process_frame(VideoFrame& next_frame);
-        void _decode_thread(VideoStream& video, BlockingQueue<VideoFrame>& frame_queue);
-        std::vector<FrameTimeCode> _get_cutting_list() const;
+private:
+    void process_frame(VideoFrame& next_frame);
+    void flush_buffer();
+    void decode_thread(VideoStream& video, BlockingQueue<VideoFrame>& frame_queue);
+    std::vector<FrameTimeCode> cutting_list_as_timecodes() const;
 
-        cv::Mat previous_frame_;
-        std::vector<int32_t> cutting_list_;
-        TransNetV2& detector_;
-        float framerate_ = 0.0f;
-        std::optional<FrameTimeCode> start_ = std::nullopt;
-        std::optional<FrameTimeCode> end_ = std::nullopt;
+    TransNetV2& detector;
+    float framerate = 0.0f;
+    std::optional<FrameTimeCode> start = std::nullopt;
+    std::optional<FrameTimeCode> end = std::nullopt;
+    std::vector<int32_t> cutting_list;
+
+    std::vector<uint8_t> frame_buffer;
+    std::vector<uint32_t> frame_num_buffer;
 };
 
 #endif

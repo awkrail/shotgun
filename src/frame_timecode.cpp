@@ -7,44 +7,44 @@
 #include <regex>
 #include <fmt/core.h>
 
-FrameTimeCode::FrameTimeCode(const int32_t frame_num, const float fps) 
-    : framerate_{fps}, frame_num_{frame_num} {}
+FrameTimeCode::FrameTimeCode(const int32_t frame_num, const float fps)
+    : framerate{fps}, frame_num{frame_num} {}
 
 FrameTimeCode::FrameTimeCode(const FrameTimeCode& timecode)
-    : framerate_{timecode.framerate_}, frame_num_{timecode.frame_num_} {}
+    : framerate{timecode.framerate}, frame_num{timecode.frame_num} {}
 
 std::optional<int32_t> FrameTimeCode::parse_timecode_string(const std::string& timecode_str) const {
     auto sep_found = std::find(timecode_str.begin(), timecode_str.end(), ':');
     if (sep_found != timecode_str.end()) {
-        std::optional<TimeStamp> timestamp = _parse_hrs_mins_secs_to_second(timecode_str);
+        std::optional<TimeStamp> timestamp = parse_hrs_mins_secs(timecode_str);
         if (!timestamp)
             return std::nullopt;
         const float secs = calculate_total_seconds(*timestamp);
-        return std::round(secs * framerate_);
+        return std::round(secs * framerate);
     }
     return std::nullopt;
 }
 
 int32_t FrameTimeCode::parse_timecode_number(const int32_t seconds) const {
-    return std::round(seconds * framerate_);
+    return std::round(seconds * framerate);
 }
 
 int32_t FrameTimeCode::parse_timecode_number(const float seconds) const {
-    return std::round(seconds * framerate_);
+    return std::round(seconds * framerate);
 }
 
 std::string FrameTimeCode::to_string() const {
-    float secs = static_cast<float>(frame_num_ / framerate_);
-    int32_t hrs = static_cast<int32_t>(secs / frame_timecode::_SECONDS_PER_HOUR);
-    secs -= (hrs * frame_timecode::_SECONDS_PER_HOUR);
-    int32_t mins = static_cast<int32_t>(secs / frame_timecode::_SECONDS_PER_MINUTE);
-    secs = std::max(0.0f, secs - (mins * frame_timecode::_SECONDS_PER_MINUTE));
+    float secs = static_cast<float>(frame_num / framerate);
+    int32_t hrs = static_cast<int32_t>(secs / frame_timecode::SECONDS_PER_HOUR);
+    secs -= (hrs * frame_timecode::SECONDS_PER_HOUR);
+    int32_t mins = static_cast<int32_t>(secs / frame_timecode::SECONDS_PER_MINUTE);
+    secs = std::max(0.0f, secs - (mins * frame_timecode::SECONDS_PER_MINUTE));
     secs = std::round(secs * 1000) / 1000;
-    secs = std::min(frame_timecode::_SECONDS_PER_MINUTE, secs);
-    if (static_cast<int32_t>(secs) == frame_timecode::_SECONDS_PER_MINUTE) {
+    secs = std::min(frame_timecode::SECONDS_PER_MINUTE, secs);
+    if (static_cast<int32_t>(secs) == frame_timecode::SECONDS_PER_MINUTE) {
         secs = 0.0f;
         mins += 1;
-        if (mins >= frame_timecode::_MINUTES_PER_HOUR) {
+        if (mins >= frame_timecode::MINUTES_PER_HOUR) {
             mins = 0;
             hrs += 1;
         }
@@ -53,11 +53,11 @@ std::string FrameTimeCode::to_string() const {
 }
 
 std::string FrameTimeCode::to_string_second() const {
-    float secs = static_cast<float>(frame_num_ / framerate_);
+    float secs = static_cast<float>(frame_num / framerate);
     return std::to_string(secs);
 }
 
-std::optional<TimeStamp> FrameTimeCode::_parse_hrs_mins_secs_to_second(const std::string& timecode_str) const {
+std::optional<TimeStamp> FrameTimeCode::parse_hrs_mins_secs(const std::string& timecode_str) const {
     std::vector<std::string> tokens;
     std::regex delimiter(":");
     auto ite = std::sregex_token_iterator(timecode_str.begin(), timecode_str.end(), delimiter, -1);
@@ -70,7 +70,7 @@ std::optional<TimeStamp> FrameTimeCode::_parse_hrs_mins_secs_to_second(const std
 
     int32_t hour_val = 0;
     int32_t minute_val = 0;
-    float second_val = 0;
+    float second_val = 0.0f;
     try {
         hour_val = std::stoi(tokens[0]);
         minute_val = std::stoi(tokens[1]);
@@ -90,22 +90,22 @@ std::optional<TimeStamp> FrameTimeCode::_parse_hrs_mins_secs_to_second(const std
 }
 
 bool FrameTimeCode::operator==(const FrameTimeCode& other) const {
-    return framerate_ == other.get_framerate() && frame_num_ == other.get_frame_num();
+    return framerate == other.get_framerate() && frame_num == other.get_frame_num();
 }
 bool FrameTimeCode::operator!=(const FrameTimeCode& other) const {
-    return !(framerate_ == other.get_framerate() && frame_num_ == other.get_frame_num());
+    return !(framerate == other.get_framerate() && frame_num == other.get_frame_num());
 }
-bool FrameTimeCode::operator<(const FrameTimeCode& other) const { return frame_num_ < other.frame_num_; }
-bool FrameTimeCode::operator>(const FrameTimeCode& other) const { return frame_num_ > other.frame_num_; }
-bool FrameTimeCode::operator<=(const FrameTimeCode& other) const { return frame_num_ <= other.frame_num_; }
-bool FrameTimeCode::operator>=(const FrameTimeCode& other) const { return frame_num_ >= other.frame_num_; }
+bool FrameTimeCode::operator<(const FrameTimeCode& other) const { return frame_num < other.get_frame_num(); }
+bool FrameTimeCode::operator>(const FrameTimeCode& other) const { return frame_num > other.get_frame_num(); }
+bool FrameTimeCode::operator<=(const FrameTimeCode& other) const { return frame_num <= other.get_frame_num(); }
+bool FrameTimeCode::operator>=(const FrameTimeCode& other) const { return frame_num >= other.get_frame_num(); }
 
 FrameTimeCode FrameTimeCode::operator+(const FrameTimeCode& other) const {
-    return FrameTimeCode(frame_num_ + other.frame_num_, framerate_);
+    return FrameTimeCode(frame_num + other.get_frame_num(), framerate);
 }
 
 FrameTimeCode FrameTimeCode::operator-(const FrameTimeCode& other) const {
-    return FrameTimeCode(std::max(frame_num_ - other.frame_num_, 0), framerate_);
+    return FrameTimeCode(std::max(frame_num - other.get_frame_num(), 0), framerate);
 }
 
 std::optional<FrameTimeCode> FrameTimeCode::from_timecode_string(const std::string& timecode_str, const float fps) {
@@ -145,7 +145,7 @@ std::string convert_timecode_to_datetime(const int32_t hrs, const int32_t mins, 
 }
 
 float calculate_total_seconds(const TimeStamp& timestamp) {
-    return (timestamp.hour.get_hour() * frame_timecode::_SECONDS_PER_HOUR)
-         + (timestamp.minute.get_minute() * frame_timecode::_SECONDS_PER_MINUTE)
+    return (timestamp.hour.get_hour() * frame_timecode::SECONDS_PER_HOUR)
+         + (timestamp.minute.get_minute() * frame_timecode::SECONDS_PER_MINUTE)
          + timestamp.second.get_second();
 }
